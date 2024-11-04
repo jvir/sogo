@@ -44,6 +44,8 @@
               </div>
             </var:if>
           </div>
+
+
           <div class="sg-login md-default-theme md-bg md-accent" flex-gt-md="50">
             <div id="login" class="sg-login-content md-padding">
               <form name="loginForm" layout="column"
@@ -53,11 +55,13 @@
                   <input type="hidden" ng-model="app.creds.loginSuffix" var:value="loginSuffix"/>
                 </var:if>
                 <div ng-if="!app.loginState">
+
                   <md-input-container class="md-block">
                     <label><var:string label:value="Username"/></label>
                     <md-icon>person</md-icon>
                     <input autocorrect="off" autocapitalize="off" type="text" ng-model="app.creds.username" ng-required="true" ng-change="app.usernameChanged()" ng-blur="app.retrievePasswordRecoveryEnabled()" />
                   </md-input-container>
+                  
                   <md-input-container class="md-block">
                     <label><var:string label:value="Password"/></label>
                     <md-icon>vpn_key</md-icon>

@@ -23,6 +23,9 @@
 #import <NGObjWeb/WOResponse.h>
 #import <NGExtensions/NSObject+Logs.h>
 
+#import <SOGo/SOGoUser.h>
+
+
 #import <GDLContentStore/GCSOpenIdFolder.h>
 #import <GDLContentStore/GCSFolderManager.h>
 
@@ -101,6 +104,14 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
   }
 }
 
+- (NSString *) _get_user_domain
+{
+  WOContext* ctx = [self context];
+  SOGoUser* user = [ctx activeUser];
+  NSLog(@"user is %@", user);
+
+}
+
 - (WOResponse *) _performOpenIdRequest: (NSString *) endpoint
                         method: (NSString *) method
                        headers: (NSDictionary *) headers
@@ -112,7 +123,8 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
   WOResponse *response;
   WOHTTPConnection *httpConnection;
   
-
+  
+  [self _get_user_domain];
   url = [NSURL URLWithString: endpoint];
   if (url)
   {

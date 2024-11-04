@@ -25,6 +25,7 @@
    https://openid.net/developers/how-connect-works/ */
 
 #import <NGObjWeb/WOResponse.h>
+#import <SOGo/SOGoObject.h>
 
 
 @class NSString;
@@ -33,7 +34,7 @@
 @class NSJSONSerialization;
 
 
-@interface SOGoOpenIdSession : NSObject
+@interface SOGoOpenIdSession : SOGoObject
 {
   //For cache
   BOOL cacheUpdateNeeded;

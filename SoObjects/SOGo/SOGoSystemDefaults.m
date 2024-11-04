@@ -262,6 +262,11 @@ _injectConfigurationFromFile (NSMutableDictionary *defaultsDict,
   return [domains allKeys];
 }
 
+- (BOOL) loginUsernameFirst
+{
+  return [self boolForKey: @"SOGoLoginUsernameFirst"];
+}
+
 - (BOOL) enableDomainBasedUID
 {
   return [self boolForKey: @"SOGoEnableDomainBasedUID"];

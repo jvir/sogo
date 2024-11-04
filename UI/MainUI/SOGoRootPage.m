@@ -389,6 +389,37 @@ static const NSString *kJwtKey = @"jwt";
   return response;
 }
 
+- (WOResponse *) connectNameAction
+{
+  WOResponse *response;
+  WORequest *request;
+  WOCookie *authCookie, *xsrfCookie;
+  SOGoWebAuthenticator *auth;
+  SOGoUserDefaults *ud;
+  SOGoUserSettings *us;
+  SOGoUser *loggedInUser;
+  NSDictionary *params;
+  NSString *username, *password, *language, *domain, *remoteHost;
+  NSArray *supportedLanguages, *creds;
+
+  SOGoPasswordPolicyError err;
+  int expire, grace;
+  BOOL rememberLogin, b;
+
+  err = PolicyNoError;
+  expire = grace = -1;
+
+  auth = [[WOApplication application] authenticatorInContext: context];
+  request = [context request];
+  params = [[request contentAsString] objectFromJSONString];
+
+  username = [params objectForKey: @"userName"];
+
+  response = [self responseWithStatus: 200];
+
+  return response;
+}
+
 - (NSDictionary *) _casRedirectKeys
 {
   NSDictionary *redirectKeys;
@@ -596,7 +627,7 @@ static const NSString *kJwtKey = @"jwt";
       //   //To avoid making a redirection to openid server after a post request, we first redirect to a get method
       //   newLocation = [NSString stringWithFormat: @"%@?action=redirect", redirectLocation];
       // else
-        newLocation = [openIdSession loginUrl: redirectLocation];
+      newLocation = [openIdSession loginUrl: redirectLocation];
       openIdCookieLocation = [self _authLocationCookie: NO withName: @"openid-location"];
     }
   }
@@ -743,6 +774,11 @@ static const NSString *kJwtKey = @"jwt";
 - (BOOL) hasLoginDomains
 {
   return ([[self loginDomains] count] > 0);
+}
+
+- (BOOL) doLoginUsernameFirst
+{
+  return [[SOGoSystemDefaults sharedSystemDefaults] loginUsernameFirst];
 }
 
 - (BOOL) hasPasswordRecovery

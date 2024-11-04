@@ -168,6 +168,11 @@
           pageName = "SOGoRootPage";
           actionName = "connect";
         };
+        connectName = {
+          protectedBy = "<public>";
+          pageName = "SOGoRootPage";
+          actionName = "connectName";
+        };
         changePassword = {
           protectedBy = "<public>";
           pageName = "SOGoRootPage";
