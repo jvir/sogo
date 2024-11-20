@@ -1351,8 +1351,7 @@ static const NSString *kObfuscatedSecondaryEmailKey = @"obfuscatedSecondaryEmail
 - (NSArray *) fetchContactsMatching: (NSString *) filter
                            inDomain: (NSString *) domain
 {
-  return [self
-           _fetchEntriesInSources: [self addressBookSourceIDsInDomain: domain]
+  return [self _fetchEntriesInSources: [self addressBookSourceIDsInDomain: domain]
                          matching: filter
                          inDomain: domain];
 }
