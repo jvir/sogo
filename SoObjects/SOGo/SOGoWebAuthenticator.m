@@ -134,6 +134,7 @@
   SOGoOpenIdSession * openIdSession;
   SOGoSystemDefaults *sd;
   NSString *authenticationType;
+  NSString* loginDomain;
   BOOL rc;
 
   sd = [SOGoSystemDefaults sharedSystemDefaults];
@@ -149,7 +150,17 @@
     }
   else if ([authenticationType isEqualToString: @"openid"])
   {
-    openIdSession = [SOGoOpenIdSession OpenIdSessionWithToken: _pwd];
+    loginDomain = nil;
+    if(*_domain == nil || [*_domain length] == 0)
+    {
+        NSRange r;
+        r = [_login rangeOfString: @"@"];
+        if (r.location != NSNotFound)
+        {
+          loginDomain = [_login substringFromIndex: r.location+1];
+        }
+    }
+    openIdSession = [SOGoOpenIdSession OpenIdSessionWithToken: _pwd domain: loginDomain];
     if (openIdSession)
       rc = [[openIdSession login: _login] isEqualToString: _login];
     else
@@ -317,10 +328,24 @@
       else if ([authType isEqualToString: @"openid"])
       {
         SOGoOpenIdSession* session;
-        NSString* currentToken;
+        NSString* currentToken, *loginDomain, *login;
+        SOGoUser *user;
         //If the token has been refresh during the request, we need to use the new access_token
         //as the one from the cookie is no more valid
-        session = [SOGoOpenIdSession OpenIdSessionWithToken: password];
+        NSRange r;
+
+        user = [self userInContext: context];
+        login = [user loginInDomain];
+        r = [login rangeOfString: @"@"];
+        if (r.location != NSNotFound)
+        {
+          loginDomain = [login substringFromIndex: r.location+1];
+        }
+        else
+        {
+          loginDomain = nil;
+        }
+        session = [SOGoOpenIdSession OpenIdSessionWithToken: password domain: loginDomain];
         password = [session getCurrentToken];
       }
 #if defined(SAML2_CONFIG)
@@ -459,15 +484,28 @@
   authType = [sd authenticationType];
   if([authType isEqualToString:@"openid"] && [sd openIdEnableRefreshToken])
   {
-    NSString *currentPassword, *newPassword, *username;
+    NSString *currentPassword, *newPassword, *username, *login, *loginDomain;
     SOGoOpenIdSession *openIdSession;
-
     WOCookie* newCookie;
+    SOGoUser *user;
+    NSRange r;
+
     currentPassword = [self passwordInContext: _ctx];
     newPassword = [self imapPasswordInContext: _ctx forURL: nil forceRenew: NO];
     if(currentPassword && newPassword && ![newPassword isEqualToString: currentPassword])
     {
-      openIdSession = [SOGoOpenIdSession OpenIdSessionWithToken: newPassword];
+      user = [self userInContext: _ctx];
+      login = [user loginInDomain];
+      r = [login rangeOfString: @"@"];
+      if (r.location != NSNotFound)
+      {
+        loginDomain = [login substringFromIndex: r.location+1];
+      }
+      else
+      {
+        loginDomain = nil;
+      }
+      openIdSession = [SOGoOpenIdSession OpenIdSessionWithToken: newPassword domain: loginDomain];
       if (openIdSession)
         username = [openIdSession login: @""]; //Force to refresh the name
       else

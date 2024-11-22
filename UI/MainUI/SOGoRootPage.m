@@ -165,6 +165,28 @@ static const NSString *kJwtKey = @"jwt";
   return locationCookie;
 }
 
+- (WOCookie *) _domainCookie: (BOOL) cookieReset
+                    withDomain: (NSString *) _domain
+{
+  WOCookie *domainCookie;
+  NSString *appName;
+  WORequest *rq;
+  NSCalendarDate *date;
+
+  rq = [context request];
+  domainCookie = [WOCookie cookieWithName: @"sogo-user-domain" value: _domain];
+  appName = [rq applicationName];
+  [domainCookie setPath: [NSString stringWithFormat: @"/%@/", appName]];
+  if (cookieReset)
+    {
+      date = [NSCalendarDate calendarDate];
+      [date setTimeZone: [NSTimeZone timeZoneForSecondsFromGMT: 0]];
+      [domainCookie setExpires: [date yesterday]];
+    }
+
+  return domainCookie;
+}
+
 //
 //
 //
@@ -389,36 +411,6 @@ static const NSString *kJwtKey = @"jwt";
   return response;
 }
 
-- (WOResponse *) connectNameAction
-{
-  WOResponse *response;
-  WORequest *request;
-  WOCookie *authCookie, *xsrfCookie;
-  SOGoWebAuthenticator *auth;
-  SOGoUserDefaults *ud;
-  SOGoUserSettings *us;
-  SOGoUser *loggedInUser;
-  NSDictionary *params;
-  NSString *username, *password, *language, *domain, *remoteHost;
-  NSArray *supportedLanguages, *creds;
-
-  SOGoPasswordPolicyError err;
-  int expire, grace;
-  BOOL rememberLogin, b;
-
-  err = PolicyNoError;
-  expire = grace = -1;
-
-  auth = [[WOApplication application] authenticatorInContext: context];
-  request = [context request];
-  params = [[request contentAsString] objectFromJSONString];
-
-  username = [params objectForKey: @"userName"];
-
-  response = [self responseWithStatus: 200];
-
-  return response;
-}
 
 - (NSDictionary *) _casRedirectKeys
 {
@@ -543,7 +535,7 @@ static const NSString *kJwtKey = @"jwt";
   return response;
 }
 
-- (id <WOActionResults>) _openidDefaultAction
+- (id <WOActionResults>) _openidDefaultAction: (NSString *) _domain
 {
   WOResponse *response;
   NSString *login, *redirectLocation, *serverUrl;
@@ -551,7 +543,7 @@ static const NSString *kJwtKey = @"jwt";
   NSURL *newLocation, *oldLocation;
   NSDictionary *formValues;
   SOGoUser *loggedInUser;
-  WOCookie *openIdCookie, *openIdCookieLocation, *openIdRefreshCookie;
+  WOCookie *openIdCookie, *openIdCookieLocation, *openIdRefreshCookie, *domainCookie;
   WORequest *rq;
   SOGoWebAuthenticator *auth;
   SOGoOpenIdSession *openIdSession;
@@ -560,9 +552,16 @@ static const NSString *kJwtKey = @"jwt";
   openIdCookie = nil;
   openIdCookieLocation = nil;
   openIdRefreshCookie = nil;
+  domainCookie = nil;
   newLocation = nil;
 
-  openIdSession = [SOGoOpenIdSession OpenIdSession];
+  rq = [context request];
+
+  //Check if the domain is stored in a cookie if not given
+  if(_domain == nil || [_domain length] == 0)
+    _domain = [rq cookieValueForKey: @"sogo-user-domain"]; //_domain can still be nil aftert his
+
+  openIdSession = [SOGoOpenIdSession OpenIdSession: _domain];
 
   if(![openIdSession sessionIsOk])
   {
@@ -571,7 +570,6 @@ static const NSString *kJwtKey = @"jwt";
   }
 
   login = [[context activeUser] login];
-  rq = [context request];
   if ([login isEqualToString: @"anonymous"])
     login = nil;
   if (!login)
@@ -579,7 +577,6 @@ static const NSString *kJwtKey = @"jwt";
     //You get here if you nerver been logged in or if you token is expired
     serverUrl = [[context serverURL] absoluteString];
     redirectLocation = [NSString stringWithFormat: @"%@/%@/", serverUrl, [rq applicationName]];
-    NSLog(@"ServerUrl %@ and redirect: %@", serverUrl, redirectLocation);
     if((formValues = [rq formValues]) && [formValues objectForKey: @"code"])
     {
       //You get here if this is the callback of openid after you logged in
@@ -590,6 +587,7 @@ static const NSString *kJwtKey = @"jwt";
       //   sessionState = [value lastObject];
       // else
       //   sessionState = value;
+
       value = [formValues objectForKey: @"code"];
       if ([value isKindOfClass: [NSArray class]])
         code = [value lastObject];
@@ -606,6 +604,7 @@ static const NSString *kJwtKey = @"jwt";
       }
       newLocation = [rq cookieValueForKey: @"openid-location"];
       openIdCookieLocation = [self _authLocationCookie: YES withName: @"openid-location"];
+      domainCookie = [self _domainCookie: YES withDomain: _domain];
     }
     // else if((formValues = [rq formValues]) && [formValues objectForKey: @"action"])
     // {
@@ -627,6 +626,11 @@ static const NSString *kJwtKey = @"jwt";
       //   //To avoid making a redirection to openid server after a post request, we first redirect to a get method
       //   newLocation = [NSString stringWithFormat: @"%@?action=redirect", redirectLocation];
       // else
+      if(_domain != nil && [_domain length] > 0)
+      {
+        //add the domain cookie to get it after the redirect
+        domainCookie = [self _domainCookie: NO withDomain: _domain];
+      }
       newLocation = [openIdSession loginUrl: redirectLocation];
       openIdCookieLocation = [self _authLocationCookie: NO withName: @"openid-location"];
     }
@@ -648,6 +652,8 @@ static const NSString *kJwtKey = @"jwt";
     [response addCookie: openIdCookie];
   if (openIdCookieLocation)
     [response addCookie: openIdCookieLocation];
+  if(domainCookie)
+    [response addCookie: domainCookie];
   //[response setStatus: 303];
   return response;
 }
@@ -730,17 +736,81 @@ static const NSString *kJwtKey = @"jwt";
   return response;
 }
 
+- (WOResponse *) connectNameAction
+{
+  WOResponse *response;
+  WORequest *request;
+  //SOGoUserDefaults *ud;
+  //SOGoUserSettings *us;
+  NSDictionary *params;
+  NSString *username, *language, *domain;
+  NSRange r;
+
+  request = [context request];
+  params = [[request contentAsString] objectFromJSONString];
+
+  username = [params objectForKey: @"userName"];
+
+  //Extract the domain
+  r = [username rangeOfString: @"@"];
+  if (r.location != NSNotFound)
+  {
+    domain = [username substringFromIndex: r.location+1];
+
+    //Lot of rework here to make authentification type a domain parameter but for now we will only get the domain and ask the poc proxy
+    response = [self _openidDefaultAction: domain];
+  }
+  else
+  {
+    [self logWithFormat: @"Domain is requireds but not found for user recovery exception for user %@", username];
+    response = [self responseWithStatus: 400
+                              andString: @"Password recovery email in error"];
+  }
+
+  return response;
+}
+
 - (id <WOActionResults>) defaultAction
 {
-  NSString *authenticationType;
+  NSString *authenticationType, *loginDomain;
+  SOGoSystemDefaults* sd;
   id <WOActionResults> result;
 
-  authenticationType = [[SOGoSystemDefaults sharedSystemDefaults]
-                         authenticationType];
+  loginDomain = nil;
+  sd = [SOGoSystemDefaults sharedSystemDefaults];
+  if([sd loginUsernameFirst])
+  {
+    NSString *login;
+    //In this mode sogo will ask the mail of the user before doing any authentication
+    //CHeck if a user is already logged in
+
+    login = [[context activeUser] login];
+    if ([login isEqualToString: @"anonymous"])
+      login = nil;
+    if(!login)
+      return [self _standardDefaultAction];
+    else
+    {
+      //User already logged in. Extract the domain in that case
+      NSRange r;
+      r = [login rangeOfString: @"@"];
+      if (r.location != NSNotFound)
+      {
+        loginDomain = [login substringFromIndex: r.location+1];
+      }
+      else
+      {
+        loginDomain = nil;
+      }
+    }
+  }
+
+  authenticationType = [sd  authenticationType];
+
   if ([authenticationType isEqualToString: @"cas"])
     result = [self _casDefaultAction];
   else if ([authenticationType isEqualToString: @"openid"])
-    result = [self _openidDefaultAction];
+    result = [self _openidDefaultAction: loginDomain];
 #if defined(SAML2_CONFIG)
   else if ([authenticationType isEqualToString: @"saml2"])
     result = [self _saml2DefaultAction];
@@ -779,6 +849,11 @@ static const NSString *kJwtKey = @"jwt";
 - (BOOL) doLoginUsernameFirst
 {
   return [[SOGoSystemDefaults sharedSystemDefaults] loginUsernameFirst];
+}
+
+- (BOOL) doFullLogin
+{
+  return ![self doLoginUsernameFirst];
 }
 
 - (BOOL) hasPasswordRecovery

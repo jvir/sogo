@@ -170,6 +170,69 @@
           return d.promise;
         }, // login: function(data) { ...
 
+        loginName: function(data) {
+          var d = $q.defer(),
+              username = data.username,
+              language;
+
+          if (data.language && data.language != 'WONoSelectionString') {
+            language = data.language;
+          }
+
+          $http({
+            method: 'POST',
+            url: '/SOGo/connectName',
+            data: {
+              userName: username,
+              language: language
+            }
+          }).then(function(response) {
+            var data = response.data;
+            // Make sure browser's cookies are enabled
+            if (navigator && !navigator.cookieEnabled) {
+              d.reject({error: l('cookiesNotEnabled')});
+            }
+            else {
+                d.resolve({ url: redirectUrl(data.username, "") });
+            }
+          }, function(error) {
+            var response, perr, data = error.data;
+            if (data && data.totpInvalidKey) {
+              response = {error: l('You provided an invalid TOTP key.')};
+            }
+            else if (data && angular.isDefined(data.LDAPPasswordPolicyError)) {
+              perr = data.LDAPPasswordPolicyError;
+              if (perr == passwordPolicyConfig.PolicyNoError) {
+                response = {error: l('Wrong username or password.')};
+              }
+              else if (perr == passwordPolicyConfig.PolicyAccountLocked) {
+                response = {error: l('Your account was locked due to too many failed attempts.')};
+              }
+              else if (perr == passwordPolicyConfig.PolicyPasswordExpired ||
+                       perr == passwordPolicyConfig.PolicyChangeAfterReset) {
+                response = {
+                  passwordexpired: 1,
+                  url: redirectUrl(username, domain)
+                };
+              }
+              else if (perr == passwordPolicyConfig.PolicyChangeAfterReset) {
+                response = {
+                  passwordexpired: 1,
+                  url: redirectUrl(username, domain)
+                };
+              }
+              else {
+                response = {error: l('Login failed due to unhandled error case: ') + perr};
+              }
+            }
+            else {
+              response = {error: l('Unhandled error response')};
+            }
+            d.reject(response);
+          });
+          return d.promise;
+        },
+
         changePassword: function(userName, domain, newPassword, oldPassword, token) {
           var d = $q.defer(),
               xsrfCookie = $cookies.get('XSRF-TOKEN');

@@ -49,6 +49,9 @@
   NSString *openIdEmailParam;
   BOOL openIdEnableRefreshToken;
 
+  NSString *forDomain;
+
+
   //From request to well-known/configuration
   NSString *authorizationEndpoint;
   NSString *tokenEndpoint;
@@ -67,7 +70,8 @@
 }
 
 + (BOOL) checkUserConfig;
-+ (SOGoOpenIdSession *) OpenIdSession;
++ (SOGoOpenIdSession *) OpenIdSession: (NSString *) _domain;
++ (SOGoOpenIdSession *) OpenIdSessionWithToken: (NSString *) token domain: (NSString *) _domain;
 + (void) deleteValueForSessionKey: (NSString *) theSessionKey;
 
 - (void) initialize;
@@ -76,7 +80,7 @@
                         method: (NSString *) method
                        headers: (NSDictionary *) headers
                           body: (NSData *) body;
-- (NSMutableDictionary *) fecthConfiguration;
+- (NSMutableDictionary *) fecthConfiguration: (NSString *) _domain;
 - (void) setAccessToken;
 - (NSString *) getRefreshToken; 
 - (NSString *) getToken;
