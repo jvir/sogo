@@ -631,7 +631,9 @@ static const NSString *kJwtKey = @"jwt";
         //add the domain cookie to get it after the redirect
         domainCookie = [self _domainCookie: NO withDomain: _domain];
       }
-      newLocation = [openIdSession loginUrl: redirectLocation];
+      //newLocation = [openIdSession loginUrl: redirectLocation];
+      newLocation = @"openid_redirect";
+      newLocation = [newLocation stringByAppendingFormat: @"?domain=%@", _domain];
       openIdCookieLocation = [self _authLocationCookie: NO withName: @"openid-location"];
     }
   }
@@ -657,6 +659,8 @@ static const NSString *kJwtKey = @"jwt";
   //[response setStatus: 303];
   return response;
 }
+
+
 
 #if defined(SAML2_CONFIG)
 - (id <WOActionResults>) _saml2DefaultAction
@@ -766,6 +770,34 @@ static const NSString *kJwtKey = @"jwt";
     response = [self responseWithStatus: 400
                               andString: @"Password recovery email in error"];
   }
+
+  return response;
+}
+
+- (WOResponse *) openIdRedirectAction
+{
+  WOResponse *response;
+  WORequest *request;
+  //SOGoUserDefaults *ud;
+  //SOGoUserSettings *us;
+  SOGoOpenIdSession *openIdSession;
+  NSDictionary *params;
+  NSString *redirectLocation, *serverUrl, *_domain, *newLocation;
+  NSRange r;
+
+  NSLog(@"openIdRedirect YEAH");
+
+  request = [context request];
+  serverUrl = [[context serverURL] absoluteString];
+  redirectLocation = [NSString stringWithFormat: @"%@/%@/", serverUrl, [request applicationName]];
+
+  _domain = [request formValueForKey: @"domain"];
+  NSLog(@"openIdRedirect: GET DOMAIN %@", _domain);
+
+  openIdSession = [SOGoOpenIdSession OpenIdSession: _domain];
+  newLocation = [openIdSession loginUrl: redirectLocation];
+
+  response = [self redirectToLocation: newLocation];
 
   return response;
 }

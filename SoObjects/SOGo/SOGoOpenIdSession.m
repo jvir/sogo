@@ -130,7 +130,7 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
   {
     if(SOGoOpenIDDebugEnabled)
     {
-      NSLog(@"OpenId perform request: %@ %@", method, [endpoint hostlessURL]);
+      NSLog(@"OpenId perform request: %@ %@", method, endpoint);
       NSLog(@"OpenId perform request, headers %@", headers);
       if(body)
         NSLog(@"OpenId perform request: content %@", [[NSString alloc] initWithData:body encoding:NSUTF8StringEncoding]);
@@ -146,7 +146,9 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
                                         userInfo: nil];
     [request autorelease];
     [httpConnection sendRequest: request];
+    NSLog(@"READ RESPONSE!!!!!!");
     response = [httpConnection readResponse];
+    NSLog(@"RESPONSE GOTTEN!!!!!!");
     status = [response status];
     if(status >= 200 && status <500 && status != 404)
       return response;
@@ -202,10 +204,15 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
         config = [content objectFromJSONString];
         self->authorizationEndpoint = [config objectForKey: @"authorization_endpoint"];
         self->tokenEndpoint         = [config objectForKey: @"token_endpoint"];
-        self->introspectionEndpoint = [config objectForKey: @"introspection_endpoint"];
         self->userinfoEndpoint      = [config objectForKey: @"userinfo_endpoint"];
         self->endSessionEndpoint    = [config objectForKey: @"end_session_endpoint"];
-        self->revocationEndpoint    = [config objectForKey: @"revocation_endpoint"];
+
+        //Optionnals?
+        if([config objectForKey: @"introspection_endpoint"])
+          self->introspectionEndpoint = [config objectForKey: @"introspection_endpoint"];
+        if([config objectForKey: @"revocation_endpoint"])
+          self->revocationEndpoint    = [config objectForKey: @"revocation_endpoint"];
+
         openIdSessionIsOK = YES;
         [self _saveSessionToCache: _domain];
       }
@@ -275,10 +282,14 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
     sessionDict = [jsonSession objectFromJSONString];
     ASSIGN (authorizationEndpoint, [sessionDict objectForKey: @"authorization_endpoint"]);
     ASSIGN (tokenEndpoint, [sessionDict objectForKey: @"token_endpoint"]);
-    ASSIGN (introspectionEndpoint, [sessionDict objectForKey: @"introspection_endpoint"]);
     ASSIGN (userinfoEndpoint, [sessionDict objectForKey: @"userinfo_endpoint"]);
     ASSIGN (endSessionEndpoint, [sessionDict objectForKey: @"end_session_endpoint"]);
-    ASSIGN (revocationEndpoint, [sessionDict objectForKey: @"revocation_endpoint"]);
+
+    //Optionnals?
+    if([sessionDict objectForKey: @"introspection_endpoint"])
+      ASSIGN (introspectionEndpoint, [sessionDict objectForKey: @"introspection_endpoint"]);
+    if([sessionDict objectForKey: @"revocation_endpoint"])
+      ASSIGN (revocationEndpoint, [sessionDict objectForKey: @"revocation_endpoint"]);
     openIdSessionIsOK = YES;
   }
   else
@@ -295,10 +306,14 @@ static BOOL SOGoOpenIDDebugEnabled = YES;
   sessionDict = [NSMutableDictionary dictionary];
   [sessionDict setObject: authorizationEndpoint forKey: @"authorization_endpoint"];
   [sessionDict setObject: tokenEndpoint forKey: @"token_endpoint"];
-  [sessionDict setObject: introspectionEndpoint forKey: @"introspection_endpoint"];
   [sessionDict setObject: userinfoEndpoint forKey: @"userinfo_endpoint"];
   [sessionDict setObject: endSessionEndpoint forKey: @"end_session_endpoint"];
-  [sessionDict setObject: revocationEndpoint forKey: @"revocation_endpoint"];
+
+  //Optionnals?
+  if(introspectionEndpoint)
+    [sessionDict setObject: introspectionEndpoint forKey: @"introspection_endpoint"];
+  if(revocationEndpoint)
+    [sessionDict setObject: revocationEndpoint forKey: @"revocation_endpoint"];
 
   jsonSession = [sessionDict jsonRepresentation];
 

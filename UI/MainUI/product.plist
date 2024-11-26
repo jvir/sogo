@@ -173,6 +173,11 @@
           pageName = "SOGoRootPage";
           actionName = "connectName";
         };
+        openid_redirect = {
+          protectedBy = "<public>";
+          pageName = "SOGoRootPage";
+          actionName = "openIdRedirect";
+        };
         changePassword = {
           protectedBy = "<public>";
           pageName = "SOGoRootPage";
