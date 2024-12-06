@@ -179,13 +179,18 @@
             language = data.language;
           }
 
+          $http.defaults.headers.common.Authorization
+
           $http({
             method: 'POST',
-            url: '/SOGo/connectName',
-            data: {
-              userName: username,
-              language: language
-            }
+            url: '/SOGo/connectName?userName='+username,
+            // data: JSON.stringify({userName: username}),
+            data: {userName: username},
+            // headers: {
+            //  //'Content-Type': undefined
+            //  //'Content-Type': "application/x-www-form-urlencoded"
+            //   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+            // }
           }).then(function(response) {
             var data = response.data;
             // Make sure browser's cookies are enabled
@@ -193,7 +198,7 @@
               d.reject({error: l('cookiesNotEnabled')});
             }
             else {
-                d.resolve({ url: redirectUrl(data.username, "") });
+                d.resolve({ url: data.redirect });
             }
           }, function(error) {
             var response, perr, data = error.data;

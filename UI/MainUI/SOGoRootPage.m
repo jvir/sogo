@@ -762,7 +762,9 @@ static const NSString *kJwtKey = @"jwt";
     domain = [username substringFromIndex: r.location+1];
 
     //Lot of rework here to make authentification type a domain parameter but for now we will only get the domain and ask the poc proxy
-    response = [self _openidDefaultAction: domain];
+    // response = [self _openidDefaultAction: domain];
+    response = [self responseWithStatus: 200 andJSONRepresentation: 
+                  [NSDictionary dictionaryWithObjectsAndKeys: @"https://login.microsoftonline.com/3a948ef1-a497-40ee-9c3c-69d64c39a5e9/oauth2/v2.0/authorize?scope=openid profile email offline_access&response_type=code&client_id=a05ff5e8-8944-4a95-a5b2-8ae34473f9c6&redirect_uri=http://127.0.0.1/SOGo", @"redirect", nil]];
   }
   else
   {
